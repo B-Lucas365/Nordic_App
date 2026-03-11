@@ -9,9 +9,12 @@ import SwiftUI
 
 @main
 struct NordicApp: App {
+    @StateObject private var favoritesStore = FavoritesStore()
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootTabView()
+                .environmentObject(favoritesStore)
         }
     }
 }
