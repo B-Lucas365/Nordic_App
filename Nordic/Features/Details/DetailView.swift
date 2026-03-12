@@ -70,10 +70,18 @@ struct DetailView: View {
             
             Spacer()
             
-            CircleIconButtom(
-                systemImage: favoritesStore.isFfavorite(item) ? "bookmark.fill" : "bookmark"
-            ) {
-                favoritesStore.toggleFavorite(item)
+            HStack(spacing: 12) {
+                CircleIconButtom(
+                    systemImage: favoritesStore.isFavorite(item) ? "heart.fill" : "heart"
+                ) {
+                    favoritesStore.toggleFavorite(item)
+                }
+                
+                CircleIconButtom (
+                    systemImage: favoritesStore.isInWatchList(item) ? "bookmark.fill" : "bookmark"
+                ) {
+                    favoritesStore.toggleWatchList(item)
+                }
             }
         }
     }

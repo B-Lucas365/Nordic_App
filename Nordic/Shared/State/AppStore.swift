@@ -10,6 +10,8 @@ import Combine
 
 final class FavoritesStore: ObservableObject {
     @Published private(set) var favoriteIds: Set<Int> = []
+    @Published private(set) var watchlistIds: Set<Int> = []
+    
     private var catalog: [Int: MediaItem] = [:]
     
     func register(_ items: [MediaItem]) {
@@ -18,7 +20,7 @@ final class FavoritesStore: ObservableObject {
         }
     }
     
-    func isFfavorite(_ item: MediaItem) -> Bool {
+    func isFavorite(_ item: MediaItem) -> Bool {
         favoriteIds.contains(item.id)
     }
     
@@ -37,5 +39,27 @@ final class FavoritesStore: ObservableObject {
             .compactMap {catalog[$0]}
             .sorted {$0.title < $1.title}
     }
+    
+    func isInWatchList(_ item: MediaItem) -> Bool {
+        watchlistIds.contains(item.id)
+    }
+    
+    func toggleWatchList(_ item: MediaItem) {
+        register([item])
+        
+        if watchlistIds.contains(item.id) {
+            watchlistIds.remove(item.id)
+        } else {
+            watchlistIds.insert(item.id)
+        }
+    }
+    
+    var watchListItems: [MediaItem] {
+        watchlistIds
+            .compactMap {catalog[$0]}
+            .sorted {$0.title < $1.title}
+    }
+    
+   
 }
 
