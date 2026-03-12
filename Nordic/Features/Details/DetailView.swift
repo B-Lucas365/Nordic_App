@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct DetailView: View {
+    @EnvironmentObject private var favoritesStore: FavoritesStore
+    @Environment(\.dismiss) private var dismiss
     let item: MediaItem
     
     private let genres: [String] = ["Drama", "Sci-Fi", "Mystery"]
@@ -17,31 +19,32 @@ struct DetailView: View {
     """
     
     var body: some View {
-        ZStack {
-            Color("AppBackground").ignoresSafeArea()
-            
-            ScrollView(.vertical, showsIndicators: false) {
-                header
-                content
-            }
-        }
-        
-        
-    }
-    
-    private var header: some View {
-        ZStack(alignment: .top) {
-            Rectangle()
-                .fill(Color.white.opacity(0.12))
-                .frame(height: 440)
-                .overlay(
-                    Text("Poster / Backdrop")
-                        .foregroundStyle(Color("AppSecondary"))
-                        .font(.system(size: 14, weight: .medium))
-                )
-                .overlay(gradientOverlay, alignment: .bottom)
-                .ignoresSafeArea(edges: .top)
+        GeometryReader {geo in
+            ZStack {
+                Color("AppBackground").ignoresSafeArea()
                 
+                ScrollView(.vertical, showsIndicators: false) {
+                    ZStack(alignment: .top) {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.12))
+                            .frame(height: 440)
+                            .overlay(
+                                Text("Poster / Backdrop")
+                                    .foregroundStyle(Color("AppSecondary"))
+                                    .font(.system(size: 14, weight: .medium))
+                            )
+                            .overlay(gradientOverlay, alignment: .bottom)
+
+                        headerButtons
+                            .padding(.top, geo.safeAreaInsets.top)
+                            .padding(.horizontal, 18)
+                    }
+                    
+                    content
+                }
+                .ignoresSafeArea(edges: .top)
+            }
+            .toolbar(.hidden, for: .navigationBar);
         }
     }
     
@@ -62,17 +65,16 @@ struct DetailView: View {
     private var headerButtons: some View {
         HStack {
             CircleIconButtom(systemImage: "chevron.left") {
-                
+                dismiss()
             }
             
             Spacer()
             
-            CircleIconButtom(systemImage: "bookmark") {
-                print("Book tapped")
+            CircleIconButtom(
+                systemImage: favoritesStore.isFfavorite(item) ? "bookmark.fill" : "bookmark"
+            ) {
+                favoritesStore.toggleFavorite(item)
             }
-            .overlay(
-                EmptyView()
-            )
         }
     }
     
@@ -133,3 +135,4 @@ struct DetailView: View {
         .padding(.top, 14)
     }
 }
+

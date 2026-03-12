@@ -18,3 +18,4 @@ struct NordicApp: App {
         }
     }
 }
+

@@ -100,6 +100,10 @@ struct HomeView: View {
                    
                 }
             }
+            .onAppear {
+                favoritesStore.register(heroItems)
+                favoritesStore.register(newItems)
+            }
             .navigationDestination(for: MediaItem.self) { item in
                     DetailView(item: item)
             }
@@ -107,15 +111,8 @@ struct HomeView: View {
                 SeeAllView(title: section.title, items: items(for: section))
             }
         }
-        .onAppear {
-            favoritesStore.register(heroItems)
-            favoritesStore.register(newItems)
-        }
     }
-}
-
-#Preview {
-    HomeView()
+        
 }
 
 private struct HeroBannerView: View {

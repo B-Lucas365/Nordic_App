@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct SearchView: View {
+    @EnvironmentObject private var favoritesStore: FavoritesStore
     @State private var searchText = ""
     @State private var filters = SearchFilters()
     @State private var isShowingFilters = false
@@ -61,6 +62,9 @@ struct SearchView: View {
                     .padding(.horizontal, 18)
                     .padding(.vertical, 16)
                 }
+            }
+            .onAppear {
+                favoritesStore.register(allItems)
             }
             .sheet(isPresented: $isShowingFilters) {
                 FilterSheetView(filters: $filters, genres: genres)
@@ -124,8 +128,4 @@ private struct SearchResultRow: View {
         .background(Color.white.opacity(0.06))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
-}
-
-#Preview {
-    SearchView()
 }
