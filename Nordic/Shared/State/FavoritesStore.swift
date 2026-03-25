@@ -13,6 +13,11 @@ final class FavoritesStore: ObservableObject {
     @Published private(set) var watchlistIds: Set<Int> = []
     
     private var catalog: [Int: MediaItem] = [:]
+    private let storeKey = "favorite_store_key"
+    
+    init() {
+        loadPersistedState()
+    }
     
     func register(_ items: [MediaItem]) {
         for item in items {
@@ -32,6 +37,8 @@ final class FavoritesStore: ObservableObject {
         } else {
             favoriteIds.insert(item.id)
         }
+        
+        persistState()
     }
     
     var favoriteItems: [MediaItem] {
@@ -52,6 +59,8 @@ final class FavoritesStore: ObservableObject {
         } else {
             watchlistIds.insert(item.id)
         }
+        
+        persistState()
     }
     
     var watchListItems: [MediaItem] {
@@ -60,6 +69,33 @@ final class FavoritesStore: ObservableObject {
             .sorted {$0.title < $1.title}
     }
     
+    private func persistState() {
+        let state = FavoritesPersistenceState(
+            favoritesIds: Array(favoriteIds),
+            watchListIds: Array(watchlistIds)
+        )
+        
+        do {
+            let data = try JSONEncoder().encode(state)
+            UserDefaults.standard.set(data, forKey: storeKey)
+        } catch {
+            print("Failed to persist Favorites state")
+        }
+    }
+    
    
+    private func loadPersistedState() {
+        guard let data = UserDefaults.standard.data(forKey: storeKey) else {
+            return
+        }
+        
+        do {
+            let state = try JSONDecoder().decode(FavoritesPersistenceState.self, from: data)
+            favoriteIds = Set(state.favoritesIds)
+            watchlistIds = Set(state.watchListIds)
+        } catch {
+            print("Failed to load persisted favorites state", error)
+        }
+    }
 }
 

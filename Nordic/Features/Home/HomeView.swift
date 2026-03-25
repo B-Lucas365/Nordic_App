@@ -1,17 +1,12 @@
-//
-//  HomeView.swift
-//  Nordic
-//
-//  Created by Lucas Renan on 10/02/26.
-//
 import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var favoritesStore: FavoritesStore
-    @State private var searchText = ""
+    @StateObject private var viewModel = HomeViewModel()
+
     @State private var selectedGenreId: Int = 0
     @State private var selectedSection: HomeSection? = nil
-    
+
     private let genres: [Genre] = [
         Genre(id: 0, name: "All"),
         Genre(id: 1, name: "Adventure"),
@@ -19,106 +14,161 @@ struct HomeView: View {
         Genre(id: 3, name: "Fantasy"),
         Genre(id: 4, name: "Drama")
     ]
-    
-    private let heroItems: [MediaItem] = [
-        MediaItem(id: 1, title: "The Beekeeper", year: "2025", rating: 7.6),
-        MediaItem(id: 2, title: "Dune: Part Two", year: "2024", rating: 8.4),
-        MediaItem(id: 3, title: "Inside Out 2", year: "2024", rating: 7.9)
-    ]
-    
-    private let newItems: [MediaItem] = [
-        MediaItem(id: 11, title: "Lilo & Stitch", year: "2025", rating: 7.2),
-        MediaItem(id: 12, title: "House of David", year: "2025", rating: 7.8),
-        MediaItem(id: 13, title: "Mickey 17", year: "2025", rating: 6.9),
-        MediaItem(id: 14, title: "Another Title", year: "2024", rating: 7.1)
-    ]
-    
+
     private func items(for section: HomeSection) -> [MediaItem] {
         switch section {
-        case .new: return newItems
-        case .movies: return newItems
+        case .new:
+            return viewModel.trendingMovies.map(mapToMediaItem)
+        case .movies:
+            return viewModel.popularMovies.map(mapToMediaItem)
         }
     }
-    
+
     var body: some View {
         NavigationStack {
             ZStack {
                 Color("AppBackground").ignoresSafeArea()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        HStack {
-                            Text("Discover")
-                                .font(.system(size: 28, weight: .bold))
-                                .foregroundStyle(Color("AppTextPrimary"))
-                            Spacer()
-                        }
-                        .padding(.top, 6)
-                        
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 10) {
-                                ForEach(genres) {genre in
-                                    GenreChipView(
-                                        title: genre.name, isSelected: selectedGenreId == genre.id
-                                    ) {
-                                        selectedGenreId = genre.id
-                                    }
-                                }
-                            }
-                            .padding(.horizontal, 2)
-                        }
-                        
-                        TabView {
-                            ForEach(heroItems) {item in
-                                HeroBannerView(title: item.title)
-                                    .padding(.horizontal, 2)
-                            }
-                        }
-                        .frame(height: 190)
-                        .tabViewStyle(.page(indexDisplayMode: .automatic))
 
-                        SectionHeaderView(title: "New") {
-                            selectedSection = .new
-                        }
-                        
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 14) {
-                                ForEach(newItems) {item in
-                                    NavigationLink(value: item) {
-                                        PosterCardView(item: item)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                        }
-                        
-                        Spacer()
-                    }
-                    .padding(.horizontal, 18)
-                    .padding(.bottom, 20)
-                    .navigationTitle("")
-                    .toolbarVisibility(.hidden)
-                   
-                }
+                content
             }
-            .onAppear {
-                favoritesStore.register(heroItems)
-                favoritesStore.register(newItems)
+            .task {
+                await viewModel.load()
+                registerLoadedMovies()
             }
             .navigationDestination(for: MediaItem.self) { item in
-                    DetailView(item: item)
+                DetailView(item: item)
             }
-            .navigationDestination(item: $selectedSection) {section in
+            .navigationDestination(item: $selectedSection) { section in
                 SeeAllView(title: section.title, items: items(for: section))
             }
         }
     }
-        
+
+    @ViewBuilder
+    private var content: some View {
+        if viewModel.isLoading {
+            ProgressView()
+                .tint(Color("AppTextPrimary"))
+        } else if let errorMessage = viewModel.errorMesage {
+            VStack(spacing: 12) {
+                Text("Something went wrong")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Color("AppTextPrimary"))
+
+                Text(errorMessage)
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color("AppSecondary"))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    HStack {
+                        Text("Discover")
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundStyle(Color("AppTextPrimary"))
+                        Spacer()
+                    }
+                    .padding(.top, 6)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(genres) { genre in
+                                GenreChipView(
+                                    title: genre.name,
+                                    isSelected: selectedGenreId == genre.id
+                                ) {
+                                    selectedGenreId = genre.id
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 2)
+                    }
+
+                    TabView {
+                        ForEach(viewModel.trendingMovies.prefix(5)) { movie in
+                            NavigationLink(value: mapToMediaItem(movie)) {
+                                HeroBannerView(title: movie.title)
+                                    .padding(.horizontal, 2)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .frame(height: 190)
+                    .tabViewStyle(.page(indexDisplayMode: .automatic))
+
+                    SectionHeaderView(title: "New") {
+                        selectedSection = .new
+                    }
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 14) {
+                            ForEach(viewModel.trendingMovies.prefix(10)) { movie in
+                                NavigationLink(value: mapToMediaItem(movie)) {
+                                    TMDBPosterCardView(movie: movie)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+
+                    SectionHeaderView(title: "Movies") {
+                        selectedSection = .movies
+                    }
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 14) {
+                            ForEach(viewModel.popularMovies.prefix(10)) { movie in
+                                NavigationLink(value: mapToMediaItem(movie)) {
+                                    TMDBPosterCardView(movie: movie)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+
+                    Spacer()
+                }
+                .padding(.horizontal, 18)
+                .padding(.bottom, 20)
+                .navigationTitle("")
+                .toolbarVisibility(.hidden)
+            }
+        }
+    }
+
+    private func registerLoadedMovies() {
+        let allItems = (viewModel.trendingMovies + viewModel.popularMovies).map(mapToMediaItem)
+        favoritesStore.register(allItems)
+    }
+
+    private func mapToMediaItem(_ movie: TMDBMovieDTO) -> MediaItem {
+        MediaItem(
+            id: movie.id,
+            title: movie.title,
+            year: releaseYear(from: movie.releaseDate),
+            rating: movie.voteAverage,
+            genreIds: [],
+            type: .movie
+        )
+    }
+
+    private func releaseYear(from releaseDate: String?) -> String {
+        guard let releaseDate,
+              releaseDate.count >= 4 else {
+            return "—"
+        }
+
+        return String(releaseDate.prefix(4))
+    }
 }
 
 private struct HeroBannerView: View {
     let title: String
+
     var body: some View {
-        RoundedRectangle(cornerRadius: 24, style: . continuous)
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
             .fill(Color.white.opacity(0.10))
             .overlay(
                 HStack {
